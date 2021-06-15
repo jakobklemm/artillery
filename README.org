@@ -1,0 +1,4 @@
+#+TITLE: Arma 3 - Artillery computer
+
+Easy to use artillery calculator for Arma 3, intended to be used in
+King of the Hill.
