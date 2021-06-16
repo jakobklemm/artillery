@@ -1,5 +1,6 @@
 static GRAVITY: f64 = 9.80665;
 
+#[derive(Clone, Debug)]
 enum Weapon {
     Scorcher(Vec<Mode>),
     Mortar(Vec<Mode>),
@@ -21,18 +22,23 @@ struct Position {
     alt: u32,
 }
 
-struct Object {
+#[derive(Clone, Debug)]
+struct Player {
     position: Position,
-    weapons: Weapon,
+    weapon: Weapon,
 }
 
-impl Object {
+impl Player {
     fn new(x: u32, y: u32, alt: u32) -> Self {
         let pos: Position = Position::new(x, y, alt);
         Self {
             position: pos,
-            weapons: Weapon::None,
+            weapon: Weapon::None,
         }
+    }
+
+    fn arm(&mut self, w: Weapon) {
+        self.weapon = w;
     }
 }
 
@@ -81,18 +87,21 @@ impl Weapon {
             Self::MLRS(modes) => {
                 return modes.to_vec();
             }
+            Self::None => return Vec::new(),
         }
     }
 
     fn mode(&self, distance: f64) -> Option<Mode> {
         let modes = self.unwrap();
         for (i, m) in modes.iter().enumerate() {
-            if i >= 1 && distance >= m.3 .1 {
-                Some(m)
+            let (min, max) = m.range;
+            if i >= 1 && distance >= min as f64 && distance < max as f64 {
+                return Some(m.clone());
             } else {
-                None
+                continue;
             }
         }
+        return None;
     }
 }
 
@@ -112,9 +121,12 @@ impl Position {
     }
 
     fn distance(&self, o: Self) -> f64 {
+        println!("{:?}, {:?}", self, o);
         let a = o.x - self.x;
+        println!("{:?}", a);
         let b = o.y - self.y;
         let distance = a.pow(2) + b.pow(2);
+        println!("{:?}", distance);
         10.0 * (distance as f64).sqrt()
     }
 
@@ -136,23 +148,21 @@ impl Position {
         let inner = (m.vel.powi(2) + sq.sqrt()) / (GRAVITY * x);
         return inner.atan();
     }
-}
 
-fn angle(v: f64, x: f64, y: f64) -> f64 {
-    let sq: f64 = v.powi(4) - GRAVITY * (GRAVITY * x.powi(2) + 2.0 * y * v.powi(2));
-    let inner = (v.powi(2) + sq.sqrt()) / (GRAVITY * x);
-    return inner.atan();
-}
-
-fn time(v: f64, x: f64, a: f64) -> f64 {
-    return x / (v * a.cos());
+    fn time(&self, o: Self, m: Mode) -> f64 {
+        return self.distance(o.clone()) / (m.vel * (self.angle(o.clone(), m)).clone());
+    }
 }
 
 fn main() {
-    let t = Position::new(1000, 1000, 10);
-    let o = Position::new(0, 0, 0);
-    let m = Mode::new("Short", 243.0, (1000, 10000));
-    println!("Distance: {}", t.distance(o.clone()));
-    println!("Bearing: {}", t.bearing(o.clone()));
-    println!("Angle: {}", t.angle(o, m));
+    let t = Player::new(1000, 1000, 100);
+    let mut p = Player::new(0, 0, 0);
+    let h = Weapon::new("Scorcher");
+    p.arm(h);
+    let d = t.position.distance(p.position);
+    println!("{:?}", d);
+    /*
+    let m = t.weapon.mode(d);
+    println!("{}", m.unwrap().name);
+    */
 }
