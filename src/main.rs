@@ -45,34 +45,26 @@ impl Player {
 impl Weapon {
     fn new(name: &str) -> Self {
         match name {
-            "Scorcher" => {
-                let modes = vec![
-                    Mode::new("Short", 153.9, (826, 2415)),
-                    Mode::new("Medium", 243.0, (2059, 6021)),
-                    Mode::new("Far", 388.8, (5271, 15414)),
-                    Mode::new("Further", 648.0, (14644, 42818)),
-                    Mode::new("Extrme", 810.0, (22881, 66903)),
-                ];
-                return Self::Scorcher(modes);
-            }
-            "Mortar" => {
-                let modes = vec![
-                    Mode::new("Short", 70.0, (34, 499)),
-                    Mode::new("Medium", 140.0, (139, 1998)),
-                    Mode::new("Far", 200.0, (284, 4078)),
-                ];
-                return Self::Mortar(modes);
-            }
-            "MLRS" => {
-                let modes = vec![
-                    Mode::new("Short", 212.5, (799, 4604)),
-                    Mode::new("Medium", 425.0, (3918, 18418)),
-                    Mode::new("Far", 637.5, (7196, 41442)),
-                    Mode::new("Full", 772.5, (12793, 73674)),
-                ];
-                return Self::Mortar(modes);
-            }
-            _ => return Self::None,
+            "Scorcher" => Self::Scorcher(vec![
+                Mode::new("Short", 153.9, (826, 2415)),
+                Mode::new("Medium", 243.0, (2059, 6021)),
+                Mode::new("Far", 388.8, (5271, 15414)),
+                Mode::new("Further", 648.0, (14644, 42818)),
+                Mode::new("Extrme", 810.0, (22881, 66903)),
+            ]),
+            "Mortar" => Self::Mortar(vec![
+                Mode::new("Short", 70.0, (34, 499)),
+                Mode::new("Medium", 140.0, (139, 1998)),
+                Mode::new("Far", 200.0, (284, 4078)),
+            ]),
+
+            "MLRS" => Self::MLRS(vec![
+                Mode::new("Short", 212.5, (799, 4604)),
+                Mode::new("Medium", 425.0, (3918, 18418)),
+                Mode::new("Far", 637.5, (7196, 41442)),
+                Mode::new("Full", 772.5, (12793, 73674)),
+            ]),
+            _ => Self::None,
         }
     }
 
