@@ -30,10 +30,20 @@ struct Player {
 
 impl Player {
     fn new(x: u32, y: u32, alt: u32) -> Self {
-        let pos: Position = Position::new(x, y, alt);
+        let p = Position::create(x, y, alt);
         Self {
-            position: pos,
+            position: p,
             weapon: Weapon::None,
+        }
+    }
+
+    fn from_grid(grid: String, alt: u32) -> Option<Self> {
+        match Position::from_grid(grid, alt) {
+            Some(pos) => Some(Self {
+                position: pos,
+                weapon: Weapon::None,
+            }),
+            None => None,
         }
     }
 
@@ -93,9 +103,9 @@ impl Weapon {
 
     fn mode(&self, distance: f64) -> Option<Mode> {
         let modes = self.unwrap();
-        for (i, m) in modes.iter().enumerate() {
+        for (_i, m) in modes.iter().enumerate() {
             let (min, max) = m.range;
-            if i >= 1 && distance >= min as f64 && distance < max as f64 {
+            if distance >= min as f64 && distance < max as f64 {
                 return Some(m.clone());
             } else {
                 continue;
@@ -116,18 +126,30 @@ impl Mode {
 }
 
 impl Position {
-    fn new(x: u32, y: u32, alt: u32) -> Self {
+    fn create(x: u32, y: u32, alt: u32) -> Self {
         Self { x, y, alt }
     }
 
+    fn from_grid(grid: String, alt: u32) -> Option<Self> {
+        if grid.len() == 8 {
+            let (x, y) = grid.split_at(4);
+            let ux: u32 = x.parse::<u32>().unwrap();
+            let uy: u32 = y.parse::<u32>().unwrap();
+            return Some(Self {
+                x: 10 * ux,
+                y: 10 * uy,
+                alt,
+            });
+        } else {
+            None
+        }
+    }
+
     fn distance(&self, o: Self) -> f64 {
-        println!("{:?}, {:?}", self, o);
-        let a = o.x - self.x;
-        println!("{:?}", a);
-        let b = o.y - self.y;
+        let a = (o.x as i64) - (self.x as i64);
+        let b = (o.y as i64) - (self.y as i64);
         let distance = a.pow(2) + b.pow(2);
-        println!("{:?}", distance);
-        10.0 * (distance as f64).sqrt()
+        (distance as f64).sqrt()
     }
 
     fn alt(&self, o: Self) -> u32 {
@@ -155,14 +177,26 @@ impl Position {
 }
 
 fn main() {
-    let t = Player::new(1000, 1000, 100);
-    let mut p = Player::new(0, 0, 0);
-    let h = Weapon::new("Scorcher");
-    p.arm(h);
-    let d = t.position.distance(p.position);
-    println!("{:?}", d);
-    /*
-    let m = t.weapon.mode(d);
-    println!("{}", m.unwrap().name);
-    */
+    match Player::from_grid("02950020".to_string(), 1) {
+        Some(target) => {
+            let mut p = Player::new(0, 0, 0);
+            let h = Weapon::new("Scorcher");
+            p.arm(h);
+            println!("player: {}, {}", p.position.x, p.position.y);
+            println!("target: {}, {}", target.position.x, target.position.y);
+            let d = target.position.distance(p.position);
+            println!("distance: {}", d);
+            match p.weapon.mode(d) {
+                Some(mode) => {
+                    println!("Mode: {}, Vel: {}", mode.name, mode.vel);
+                }
+                None => {
+                    println!("Target not in range!");
+                }
+            }
+        }
+        None => {
+            println!("Inputs not valid!");
+        }
+    }
 }
