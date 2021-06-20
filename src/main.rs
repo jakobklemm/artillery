@@ -1,4 +1,6 @@
 static GRAVITY: f64 = 9.80665;
+use std::error::Error;
+use std::fmt::Error as FmtError;
 
 #[derive(Clone, Debug)]
 enum Weapon {
@@ -28,6 +30,18 @@ struct Player {
     weapon: Weapon,
 }
 
+#[derive(Clone, Debug)]
+struct Action {
+    origin: Player,
+    target: Player,
+    mode: Mode,
+    distance: f64,
+    alt: f64,
+    time: f64,
+    angle: f64,
+    bearing: f64,
+}
+
 impl Player {
     fn new(x: u32, y: u32, alt: u32) -> Self {
         let p = Position::create(x, y, alt);
@@ -37,18 +51,39 @@ impl Player {
         }
     }
 
-    fn from_grid(grid: String, alt: u32) -> Option<Self> {
-        match Position::from_grid(grid, alt) {
-            Some(pos) => Some(Self {
-                position: pos,
-                weapon: Weapon::None,
-            }),
-            None => None,
-        }
+    fn from_grid(grid: String, alt: u32) -> Result<Self, Box<dyn Error>> {
+        let p = Position::from_grid(grid, alt)?;
+        return Ok(Self {
+            position: p,
+            weapon: Weapon::None,
+        });
     }
 
     fn arm(&mut self, w: Weapon) {
         self.weapon = w;
+    }
+
+    fn execute(&self, o: Self) -> Option<Action> {
+        let distance = self.position.distance(&o.position);
+        let alt = self.position.alt(&o.position);
+        match o.weapon.mode(distance) {
+            Some(mode) => {
+                let angle = self.position.angle(&o.position, mode.clone());
+                let bearing = self.position.bearing(&o.position);
+                let time = self.position.time(&o.position, mode.clone());
+                Some(Action {
+                    origin: o.clone(),
+                    target: self.clone(),
+                    mode: mode,
+                    distance: distance,
+                    alt: alt,
+                    time: time,
+                    angle: angle,
+                    bearing: bearing,
+                })
+            }
+            None => None,
+        }
     }
 }
 
@@ -80,7 +115,7 @@ impl Weapon {
                     Mode::new("Far", 637.5, (7196, 41442)),
                     Mode::new("Full", 772.5, (12793, 73674)),
                 ];
-                return Self::Mortar(modes);
+                return Self::MLRS(modes);
             }
             _ => return Self::None,
         }
@@ -130,73 +165,107 @@ impl Position {
         Self { x, y, alt }
     }
 
-    fn from_grid(grid: String, alt: u32) -> Option<Self> {
+    fn from_grid(grid: String, alt: u32) -> Result<Self, Box<dyn Error>> {
         if grid.len() == 8 {
             let (x, y) = grid.split_at(4);
-            let ux: u32 = x.parse::<u32>().unwrap();
-            let uy: u32 = y.parse::<u32>().unwrap();
-            return Some(Self {
+            let ux: u32 = x.parse::<u32>()?;
+            let uy: u32 = y.parse::<u32>()?;
+            return Ok(Self {
                 x: 10 * ux,
                 y: 10 * uy,
                 alt,
             });
         } else {
-            None
+            Err(Box::new(FmtError))
         }
     }
 
-    fn distance(&self, o: Self) -> f64 {
+    fn distance(&self, o: &Self) -> f64 {
         let a = (o.x as i64) - (self.x as i64);
         let b = (o.y as i64) - (self.y as i64);
         let distance = a.pow(2) + b.pow(2);
         (distance as f64).sqrt()
     }
 
-    fn alt(&self, o: Self) -> u32 {
-        self.alt - o.alt
+    fn alt(&self, o: &Self) -> f64 {
+        (self.alt as f64) - o.alt as f64
     }
 
-    fn bearing(&self, o: Self) -> f64 {
-        let a = (o.x - self.x) as f64;
-        let b = (o.y - self.y) as f64;
+    fn bearing(&self, o: &Self) -> f64 {
+        let a = ((o.x as i64) - (self.x as i64)) as f64;
+        let b = ((o.y as i64) - (self.y as i64)) as f64;
         90.0 - (b / a).atan()
     }
 
-    fn angle(&self, o: Self, m: Mode) -> f64 {
-        let x = self.distance(o.clone());
-        let y = self.alt(o.clone());
+    fn angle(&self, o: &Self, m: Mode) -> f64 {
+        let x = self.distance(o);
+        let y = self.alt(o);
         let sq: f64 =
             m.vel.powi(4) - GRAVITY * (GRAVITY * m.vel.powi(2) + 2.0 * y as f64 * m.vel.powi(2));
         let inner = (m.vel.powi(2) + sq.sqrt()) / (GRAVITY * x);
         return inner.atan();
     }
 
-    fn time(&self, o: Self, m: Mode) -> f64 {
-        return self.distance(o.clone()) / (m.vel * (self.angle(o.clone(), m)).clone());
+    fn time(&self, o: &Self, m: Mode) -> f64 {
+        return self.distance(o) / (m.vel * (self.angle(o, m)).clone());
+    }
+}
+
+fn compute() {
+    let target = Player::from_grid("02050020".to_string(), 1).unwrap();
+    let mut p = Player::new(0, 0, 0);
+    let h = Weapon::new("Scorcher");
+    p.arm(h);
+    println!("player: {}, {}", p.position.x, p.position.y);
+    println!("target: {}, {}", target.position.x, target.position.y);
+    match target.execute(p) {
+        Some(a) => println!("{}", a.mode.name),
+        None => println!("Error"),
     }
 }
 
 fn main() {
-    match Player::from_grid("02950020".to_string(), 1) {
-        Some(target) => {
-            let mut p = Player::new(0, 0, 0);
-            let h = Weapon::new("Scorcher");
-            p.arm(h);
-            println!("player: {}, {}", p.position.x, p.position.y);
-            println!("target: {}, {}", target.position.x, target.position.y);
-            let d = target.position.distance(p.position);
-            println!("distance: {}", d);
-            match p.weapon.mode(d) {
-                Some(mode) => {
-                    println!("Mode: {}, Vel: {}", mode.name, mode.vel);
-                }
-                None => {
-                    println!("Target not in range!");
-                }
-            }
-        }
-        None => {
-            println!("Inputs not valid!");
-        }
-    }
+    compute();
+}
+
+#[test]
+fn test_grid() {
+    let target = Player::from_grid("11112222".to_string(), 42).unwrap();
+    assert_eq!(target.position.x, Player::new(11110, 22220, 42).position.x)
+}
+
+#[test]
+fn test_distance() {
+    let t1 = Player::from_grid("10000000".to_string(), 42).unwrap();
+    let t2 = Player::from_grid("00000000".to_string(), 42).unwrap();
+    let d = t1.position.distance(&t2.position);
+    assert_eq!(d, 10000.0);
+}
+
+#[test]
+fn test_scorcher() {
+    let mut t1 = Player::from_grid("10000000".to_string(), 42).unwrap();
+    let weapon = Weapon::new("Scorcher");
+    t1.arm(weapon);
+    assert_eq!(t1.weapon.unwrap().len(), 5);
+}
+
+#[test]
+fn test_mode() {
+    let mut t1 = Player::from_grid("02000000".to_string(), 42).unwrap();
+    let t2 = Player::from_grid("00000000".to_string(), 42).unwrap();
+    let weapon = Weapon::new("Mortar");
+    t1.arm(weapon);
+    let mode = t1.weapon.mode(t1.position.distance(&t2.position)).unwrap();
+    assert_eq!(mode.name, "Far");
+}
+
+#[test]
+fn test_action() {
+    let mut t1 = Player::from_grid("02000000".to_string(), 42).unwrap();
+    let t2 = Player::from_grid("00000000".to_string(), 42).unwrap();
+    let weapon = Weapon::new("Mortar");
+    t1.arm(weapon);
+    let a = t2.execute(t1).unwrap();
+    assert!(a.angle.to_degrees() >= 76.0);
 }
