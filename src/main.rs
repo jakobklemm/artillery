@@ -224,8 +224,27 @@ fn compute() {
     }
 }
 
+use std::env;
+use std::io::{self, Write};
+
 fn main() {
-    compute();
+    let args: Vec<String> = env::args().collect();
+    let pos = &args[1];
+    let alt = &args[2];
+    let alt: u32 = alt.parse::<u32>().expect("Invalid arguments");
+    let mut player = Player::from_grid(pos.to_string(), alt).expect("Position not valid!");
+    let weapon = Weapon::new("Scorcher");
+    player.arm(weapon);
+    loop {
+        let mut input = String::new();
+        match io::stdin().read_line(&mut input) {
+            Ok(_line) => {
+                println!("No you're {}", input);
+            }
+            Err(err) => println!("error: {}", err),
+        }
+        std::io::stdout().flush().unwrap();
+    }
 }
 
 #[test]
