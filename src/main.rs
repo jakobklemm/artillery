@@ -1,6 +1,8 @@
 static GRAVITY: f64 = 9.80665;
+use std::env;
 use std::error::Error;
 use std::fmt::Error as FmtError;
+use std::io::{self, Write};
 
 #[derive(Clone, Debug)]
 enum Weapon {
@@ -96,7 +98,7 @@ impl Weapon {
                     Mode::new("Medium", 243.0, (2059, 6021)),
                     Mode::new("Far", 388.8, (5271, 15414)),
                     Mode::new("Further", 648.0, (14644, 42818)),
-                    Mode::new("Extrme", 810.0, (22881, 66903)),
+                    Mode::new("Extreme", 810.0, (22881, 66903)),
                 ];
                 return Self::Scorcher(modes);
             }
@@ -211,21 +213,7 @@ impl Position {
     }
 }
 
-fn compute() {
-    let target = Player::from_grid("02050020".to_string(), 1).unwrap();
-    let mut p = Player::new(0, 0, 0);
-    let h = Weapon::new("Scorcher");
-    p.arm(h);
-    println!("player: {}, {}", p.position.x, p.position.y);
-    println!("target: {}, {}", target.position.x, target.position.y);
-    match target.execute(p) {
-        Some(a) => println!("{}", a.mode.name),
-        None => println!("Error"),
-    }
-}
-
-use std::env;
-use std::io::{self, Write};
+use std::f64::consts::PI;
 
 fn main() {
     let args: Vec<String> = env::args().collect();
@@ -239,11 +227,26 @@ fn main() {
         let mut input = String::new();
         match io::stdin().read_line(&mut input) {
             Ok(_line) => {
-                println!("No you're {}", input);
+                let mut s: Vec<&str> = input.split_whitespace().collect();
+                if s.len() != 2 {
+                    println!("Not enough arguments!");
+                    continue;
+                }
+                let pos = &s[0];
+                let alt = &s[1];
+                let alt: u32 = alt.parse::<u32>().expect("Invalid alt");
+                let enemy = Player::from_grid(pos.to_string(), alt).unwrap();
+                match enemy.execute(player.clone()) {
+                    Some(a) => {
+                        let angle = 90.0 - ((a.angle / PI) * 180.0);
+                        println!("Mode: {}, Angle: {}", a.mode.name, angle);
+                        println!("Distance: {}, Time: {}", a.distance, a.time);
+                    }
+                    None => println!("Invalid!"),
+                }
             }
             Err(err) => println!("error: {}", err),
         }
-        std::io::stdout().flush().unwrap();
     }
 }
 
