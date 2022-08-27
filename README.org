@@ -2,3 +2,23 @@
 
 Easy to use artillery calculator for Arma 3, intended to be used in
 King of the Hill.
+
+The setup isn't exactly user friendly, but it provides an easy enough interface
+to be used while playing Arma.
+
+1. Determine your own position with two four digit grid references and your
+   altitude.
+2. Start the program with the following parameters:
+   #+begin_src bash
+artillery XGRDYGRD ALT
+   #+end_src
+   (XGRD = x-component of your grid reference, YGRD = y-component, ALT=altitude
+   above sea level)
+3. For each target again determine the exact grid reference and altitude and
+   simply enter them in the interactive shell with the same format:
+   #+begin_src bash
+XGRDYGRD ALT
+   #+end_src
+   If the values you have entered can be targeted all necessary values will be
+   returned.
+5. For each new enemy simply repeat step 3. and enter new coordinates. 
